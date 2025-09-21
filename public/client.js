@@ -172,7 +172,7 @@ function readFileAsBase64(file) {
 }
 async function callGeminiAPI(fileData, mimeType) {
     try {
-        const response = await fetch('http://localhost:3000/api/analyze', {
+        const response = await fetch('https://yks-analiz-projesi.onrender.com/api/analyze' , {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileData, mimeType }),
         });
         if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Sunucu hatası'); }
