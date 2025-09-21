@@ -1,4 +1,4 @@
-// client.js - Saf JavaScript ile çalışan, kütüphane ve derleyici gerektirmeyen son sürüm
+// client.js - Render adresi ayarlanmış, saf JavaScript ile çalışan son sürüm
 
 const subjects = {
     'genel': { name: 'Genel Bakış' },
@@ -172,13 +172,23 @@ function readFileAsBase64(file) {
 }
 async function callGeminiAPI(fileData, mimeType) {
     try {
-        const response = await fetch('https://yks-analiz-projesi.onrender.com/api/analyze' , {
+        const response = await fetch('https://yks-analiz-projesi.onrender.com/api/process', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileData, mimeType }),
         });
         if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Sunucu hatası'); }
-        const result = await response.json(); const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("API yanıtında geçerli JSON bulunamadı.");
-        updateUIWithAPIData(JSON.parse(jsonMatch[0]));
+        const result = await response.json(); 
+        
+        // Gelen yanıtın JSON olup olmadığını kontrol et, değilse içinden JSON'u ayıkla
+        let jsonResponse;
+        try {
+            jsonResponse = JSON.parse(result.text);
+        } catch (e) {
+            const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("API yanıtında geçerli JSON bulunamadı.");
+            jsonResponse = JSON.parse(jsonMatch[0]);
+        }
+        
+        updateUIWithAPIData(jsonResponse);
     } catch (error) {
         document.getElementById('api-status').textContent = `Hata: ${error.message}`;
         throw error;
@@ -217,6 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('upload-button').addEventListener('click', () => {
         const fileInput = document.getElementById('exam-results-upload');
         if (fileInput.files.length > 0) handleFileUpload(fileInput.files);
-        else apiStatus.textContent = 'Lütfen önce bir dosya seçin.';
+        else document.getElementById('api-status').textContent = 'Lütfen önce bir dosya seçin.';
     });
 });

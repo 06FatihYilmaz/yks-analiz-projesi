@@ -1,15 +1,20 @@
-// server.js - Konu listesini AI'a gönderen akıllı sürüm
+// server.js - Render için son ve tam sürüm
 
 const express = require('express');
 const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
-const { subjects } = require('./server_coursedata.js'); // Ortak veri dosyasını içeri alıyoruz
+const { subjects } = require('./server_coursedata.js');
 
 const app = express();
 const port = 3000;
 
-app.use(cors());
+// SADECE bizim canlı sitemizden gelen isteklere izin ver
+const corsOptions = {
+  origin: 'https://yks-analiz-projesi.onrender.com'
+};
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
@@ -25,7 +30,7 @@ for (const key in subjects) {
 const topicListString = allTopics.join(', ');
 
 
-app.post('/api/analyze', async (req, res) => {
+app.post('/api/process', async (req, res) => {
     try {
         const { fileData, mimeType } = req.body;
         if (!fileData || !mimeType) {
@@ -34,7 +39,6 @@ app.post('/api/analyze', async (req, res) => {
 
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-        // YENİ VE AKILLI PROMPT
         const prompt = `
             GÖREV: Sana bir YKS deneme sınavı sonuç belgesi verilecek. Görevin, bu belgedeki performansı analiz etmek ve SANA VERECEĞİM KONU LİSTESİNDEKİ konulara göre başarı yüzdeleri atamaktır.
 
@@ -57,19 +61,21 @@ app.post('/api/analyze', async (req, res) => {
             {
               "Problemler": 75,
               "Limit": 50,
-              "Optik": 100,
-              "Canlıların Sınıflandırılması": 75
+              "Optik": 100
             }
         `;
         
         const imagePart = { inlineData: { data: fileData, mimeType } };
-
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
-        const text = response.text();
         
+        const text = response.text();
         console.log("Gemini'dan Gelen Ham Yanıt:", text);
-        res.json({ text });
+
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        console.log("Temizlenmis Yanit:", cleanedText);
+
+        res.json({ text: cleanedText });
 
     } catch (error) {
         console.error('API hatası:', error);
@@ -78,5 +84,5 @@ app.post('/api/analyze', async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Sunucu http://localhost:3000 adresinde çalışıyor`);
+    console.log(`Sunucu http://localhost:${port} adresinde çalışıyor`);
 });
