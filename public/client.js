@@ -48,46 +48,80 @@ function createPageLayout() {
     for (const key in subjects) {
         const subject = subjects[key];
         const button = document.createElement('button');
+        button.type = 'button';
         button.className = 'tab-button';
         button.dataset.tab = key;
-        button.textContent = subject.name;
+        const tabType = subject.type ? subject.type : 'Genel';
+        const typeClass = subject.type ? 'tab-type' : 'tab-type tab-type--general';
+        button.innerHTML = `<span class="tab-title">${subject.name}</span><span class="${typeClass}">${tabType}</span>`;
         tabContainer.appendChild(button);
         const contentDiv = document.createElement('div');
         contentDiv.id = key;
         contentDiv.className = 'tab-content';
         if (key === 'genel') {
             contentDiv.innerHTML = `
-                <h2>Fatih Yılmaz, YKS İlerlemen Burada!</h2>
-                <div class="charts-grid">
-                    <div class="chart-container"><h3>TYT İlerlemesi</h3><canvas id="tytChart"></canvas><p id="tyt-progress">0%</p></div>
-                    <div class="chart-container"><h3>AYT İlerlemesi</h3><canvas id="aytChart"></canvas><p id="ayt-progress">0%</p></div>
+                <div class="content-card overview-card">
+                    <div>
+                        <h2>Fatih Yılmaz, YKS İlerlemen Burada!</h2>
+                        <p class="section-lead">Güncel ilerlemeni grafiklerden takip et, güçlü ve gelişime açık yönlerini fark et.</p>
+                    </div>
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>TYT İlerlemesi</h3>
+                                <span id="tyt-progress" class="chart-percentage">0%</span>
+                            </div>
+                            <canvas id="tytChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>AYT İlerlemesi</h3>
+                                <span id="ayt-progress" class="chart-percentage">0%</span>
+                            </div>
+                            <canvas id="aytChart"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="uploader-container">
-                    <h3>Otomatik İlerleme Güncelleme</h3>
-                    <p>Deneme sonuçlarını içeren bir PDF/resim dosyası seçerek ilerlemeni otomatik güncelle.</p>
+                <div class="content-card uploader-container">
+                    <div>
+                        <h3>Otomatik İlerleme Güncelleme</h3>
+                        <p>Deneme sonuçlarını içeren PDF veya görsel dosyalarını yükle; biz senin için analiz edelim.</p>
+                    </div>
                     <input type="file" id="exam-results-upload" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple/>
                     <button id="upload-button">Yükle ve Güncelle</button>
                     <p id="api-status"></p>
                 </div>
-                <div class="history-container">
-                    <h3>Konu İlerleme Grafiği</h3>
-                    <p>Grafiğini görmek için bir ders sekmesindeki konunun ismine tıkla.</p>
+                <div class="content-card history-container">
+                    <div>
+                        <h3>Konu İlerleme Grafiği</h3>
+                        <p>Grafiği görmek için bir ders sekmesindeki konunun adına dokun.</p>
+                    </div>
                     <canvas id="topicHistoryChart"></canvas>
                 </div>`;
         } else {
             subject.topics.forEach(topic => { if (!subject.progress[topic]) subject.progress[topic] = []; });
-            let contentHTML = `<h2>${subject.name}</h2><ul class="topic-list">`;
-            subject.topics.forEach(topic => {
+            let contentHTML = `<div class="content-card subject-card"><div class="subject-header"><h2>${subject.name}</h2><p class="section-lead">Konularının ilerlemesini güncel tut; grafiğini görmek için konu adına tıkla.</p></div><ul class="topic-list">`;
+            subject.topics.forEach((topic, index) => {
                 const latestProgress = getLatestProgress(subject.progress[topic]);
+                const selectId = `${key}-topic-${index}`;
                 contentHTML += `
                     <li class="topic-item">
-                        <span class="topic-name" onclick="showTopicHistory('${key}', '${topic}')">${topic}</span>
-                        <select data-subject="${key}" data-topic="${topic}" onchange="updateProgress(this.dataset.subject, this.dataset.topic, this.value)" value="${latestProgress}">
-                            <option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option>
-                        </select>
+                        <div class="topic-info">
+                            <button type="button" class="topic-name" onclick="showTopicHistory('${key}', '${topic}')">
+                                <span class="topic-title">${topic}</span>
+                                <span class="topic-history-hint">Grafiği görüntüle</span>
+                            </button>
+                            <span class="topic-progress" data-subject="${key}" data-topic="${topic}">${latestProgress}% tamamlandı</span>
+                        </div>
+                        <div class="topic-control">
+                            <span class="topic-label">İlerleme</span>
+                            <select id="${selectId}" class="topic-select" data-subject="${key}" data-topic="${topic}" onchange="updateProgress('${key}', '${topic}', this.value)">
+                                <option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option>
+                            </select>
+                        </div>
                     </li>`;
             });
-            contentHTML += '</ul>';
+            contentHTML += '</ul></div>';
             contentDiv.innerHTML = contentHTML;
         }
         contentContainer.appendChild(contentDiv);
@@ -135,6 +169,8 @@ function updateAllUI() {
                 const latestProgress = getLatestProgress(subjects[key].progress[topic]);
                 const dropdown = document.querySelector(`select[data-subject='${key}'][data-topic='${topic}']`);
                 if (dropdown) dropdown.value = latestProgress;
+                const progressLabel = document.querySelector(`.topic-progress[data-subject='${key}'][data-topic='${topic}']`);
+                if (progressLabel) progressLabel.textContent = `${latestProgress}% tamamlandı`;
             });
         }
     }
